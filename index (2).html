@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WORLDLE</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0f1e;
+    --surface: #111827;
+    --correct: #2d9e5f;
+    --present: #c97d1e;
+    --absent: #374151;
+    --text: #e5e7eb;
+    --accent: #38bdf8;
+    --border: #1f2937;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Space Mono', monospace;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    overflow-x: hidden;
+  }
+
+  /* Star field background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: 
+      radial-gradient(1px 1px at 10% 15%, rgba(255,255,255,0.3) 0%, transparent 100%),
+      radial-gradient(1px 1px at 30% 40%, rgba(255,255,255,0.2) 0%, transparent 100%),
+      radial-gradient(1px 1px at 60% 10%, rgba(255,255,255,0.3) 0%, transparent 100%),
+      radial-gradient(1px 1px at 80% 60%, rgba(255,255,255,0.2) 0%, transparent 100%),
+      radial-gradient(1px 1px at 50% 80%, rgba(255,255,255,0.25) 0%, transparent 100%),
+      radial-gradient(2px 2px at 90% 25%, rgba(56,189,248,0.2) 0%, transparent 100%),
+      radial-gradient(2px 2px at 20% 70%, rgba(56,189,248,0.15) 0%, transparent 100%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  header {
+    width: 100%;
+    padding: 18px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-bottom: 1px solid var(--border);
+    position: relative;
+    z-index: 10;
+  }
+
+  .title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 2.8rem;
+    letter-spacing: 8px;
+    background: linear-gradient(135deg, #38bdf8, #818cf8, #2d9e5f);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    text-shadow: none;
+  }
+
+  .globe-emoji {
+    font-size: 1.8rem;
+    margin-right: 12px;
+    animation: spin 20s linear infinite;
+    display: inline-block;
+  }
+
+  @keyframes spin {
+    from { transform: rotateY(0deg); }
+    to { transform: rotateY(360deg); }
+  }
+
+  main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 24px 16px;
+    gap: 20px;
+    position: relative;
+    z-index: 10;
+    width: 100%;
+  }
+
+  #message {
+    font-size: 0.85rem;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--accent);
+    min-height: 24px;
+    text-align: center;
+    transition: all 0.3s;
+  }
+
+  #board-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .row {
+    display: flex;
+    gap: 6px;
+  }
+
+  .tile {
+    width: 52px;
+    height: 52px;
+    border: 2px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.6rem;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    background: var(--surface);
+    color: var(--text);
+    transition: border-color 0.1s, transform 0.1s;
+    position: relative;
+  }
+
+  /* Dynamic tile sizing for long words */
+  .tile.sm {
+    width: 38px;
+    height: 38px;
+    font-size: 1.2rem;
+  }
+
+  .tile.xs {
+    width: 30px;
+    height: 30px;
+    font-size: 0.95rem;
+  }
+
+  .tile.active {
+    border-color: var(--accent);
+    transform: scale(1.05);
+  }
+
+  .tile.filled {
+    border-color: #4b5563;
+    animation: pop 0.1s ease;
+  }
+
+  @keyframes pop {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.12); }
+    100% { transform: scale(1); }
+  }
+
+  .tile.correct {
+    background: var(--correct);
+    border-color: var(--correct);
+    animation: flipTile 0.5s ease forwards;
+  }
+
+  .tile.present {
+    background: var(--present);
+    border-color: var(--present);
+    animation: flipTile 0.5s ease forwards;
+  }
+
+  .tile.absent {
+    background: var(--absent);
+    border-color: var(--absent);
+    animation: flipTile 0.5s ease forwards;
+  }
+
+  @keyframes flipTile {
+    0% { transform: rotateX(0deg); }
+    50% { transform: rotateX(90deg); }
+    100% { transform: rotateX(0deg); }
+  }
+
+  .tile.shake {
+    animation: shake 0.4s ease;
+  }
+
+  @keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    20% { transform: translateX(-6px); }
+    40% { transform: translateX(6px); }
+    60% { transform: translateX(-4px); }
+    80% { transform: translateX(4px); }
+  }
+
+  /* Keyboard */
+  #keyboard {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    align-items: center;
+    width: 100%;
+    max-width: 500px;
+  }
+
+  .kb-row {
+    display: flex;
+    gap: 5px;
+    justify-content: center;
+  }
+
+  .key {
+    height: 54px;
+    min-width: 36px;
+    padding: 0 6px;
+    border: none;
+    border-radius: 4px;
+    background: #1f2937;
+    color: var(--text);
+    font-family: 'Space Mono', monospace;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.1s;
+    letter-spacing: 0.5px;
+  }
+
+  .key:hover { transform: translateY(-2px); filter: brightness(1.2); }
+  .key:active { transform: translateY(0); }
+
+  .key.wide { min-width: 58px; font-size: 0.65rem; }
+
+  .key.correct { background: var(--correct); }
+  .key.present { background: var(--present); }
+  .key.absent { background: var(--absent); color: #6b7280; }
+
+  /* Legend */
+  .legend {
+    display: flex;
+    gap: 16px;
+    font-size: 0.7rem;
+    letter-spacing: 1px;
+    color: #6b7280;
+    text-transform: uppercase;
+  }
+
+  .legend-item { display: flex; align-items: center; gap: 6px; }
+  .legend-dot {
+    width: 12px; height: 12px; border-radius: 2px;
+  }
+
+  /* Win/lose animation */
+  @keyframes celebrate {
+    0%, 100% { transform: scale(1); }
+    25% { transform: scale(1.3) rotate(-5deg); }
+    75% { transform: scale(1.3) rotate(5deg); }
+  }
+
+  .win .tile {
+    animation: celebrate 0.6s ease forwards !important;
+  }
+
+  /* New game button */
+  #new-game-btn {
+    background: linear-gradient(135deg, #38bdf8, #818cf8);
+    border: none;
+    color: white;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.2rem;
+    letter-spacing: 3px;
+    padding: 12px 32px;
+    border-radius: 4px;
+    cursor: pointer;
+    margin-top: 8px;
+    transition: opacity 0.2s, transform 0.2s;
+    display: none;
+  }
+
+  #new-game-btn:hover { opacity: 0.9; transform: translateY(-2px); }
+
+  #category-tag {
+    font-size: 0.7rem;
+    letter-spacing: 3px;
+    color: #4b5563;
+    text-transform: uppercase;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <span class="globe-emoji">🌍</span>
+  <span class="title">Worldle</span>
+</header>
+
+<main>
+  <div id="category-tag">Global Word Puzzle</div>
+  <div id="message">Guess the world-themed word!</div>
+
+  <div class="legend">
+    <div class="legend-item"><div class="legend-dot" style="background:var(--correct)"></div>Correct spot</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--present)"></div>Wrong spot</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--absent)"></div>Not in word</div>
+  </div>
+
+  <div id="board-container"></div>
+  <div id="keyboard"></div>
+  <button id="new-game-btn" onclick="initGame()">New Word 🌎</button>
+</main>
+
+<script>
+const WORDS = [
+  "EARTH","GLOBE","PLANET","UNIVERSE","COSMOS","HUMANITY","MANKIND","CIVILIZATION",
+  "SOCIETY","POPULATION","CREATION","NATURE","ENVIRONMENT","ECOSYSTEM","SPHERE",
+  "REALM","DOMAIN","KINGDOM","TERRITORY","REGION","CONTINENT","HEMISPHERE",
+  "INTERNATIONAL","GLOBAL","WORLDWIDE","UNIVERSAL","PLANETARY","EARTHLY",
+  "TERRESTRIAL","COSMOPOLITAN","MULTINATIONAL","CROSSCULTURAL","FOREIGN",
+  "OVERSEAS","ABROAD","GEOGRAPHIC","CULTURAL","NATURAL","HABITAT",
+  "BIOSPHERE"
+];
+
+let targetWord, currentRow, currentCol, gameOver, board, keyStates;
+
+function initGame() {
+  targetWord = WORDS[Math.floor(Math.random() * WORDS.length)];
+  currentRow = 0;
+  currentCol = 0;
+  gameOver = false;
+  keyStates = {};
+  board = Array.from({length: 6}, () => Array(targetWord.length).fill(''));
+
+  document.getElementById('message').textContent = `Guess the ${targetWord.length}-letter word!`;
+  document.getElementById('new-game-btn').style.display = 'none';
+
+  renderBoard();
+  renderKeyboard();
+  markActiveCell();
+}
+
+function getTileSize(len) {
+  if (len <= 7) return '';
+  if (len <= 11) return 'sm';
+  return 'xs';
+}
+
+function renderBoard() {
+  const container = document.getElementById('board-container');
+  container.innerHTML = '';
+  const sz = getTileSize(targetWord.length);
+
+  for (let r = 0; r < 6; r++) {
+    const row = document.createElement('div');
+    row.className = 'row';
+    row.id = `row-${r}`;
+    for (let c = 0; c < targetWord.length; c++) {
+      const tile = document.createElement('div');
+      tile.className = 'tile' + (sz ? ' ' + sz : '');
+      tile.id = `tile-${r}-${c}`;
+      tile.textContent = board[r][c];
+      row.appendChild(tile);
+    }
+    container.appendChild(row);
+  }
+}
+
+function markActiveCell() {
+  // Remove all active
+  document.querySelectorAll('.tile.active').forEach(t => t.classList.remove('active'));
+  if (gameOver) return;
+  const tile = document.getElementById(`tile-${currentRow}-${currentCol}`);
+  if (tile && !tile.classList.contains('correct') && !tile.classList.contains('absent') && !tile.classList.contains('present')) {
+    tile.classList.add('active');
+  }
+}
+
+const KB_ROWS = [
+  ['Q','W','E','R','T','Y','U','I','O','P'],
+  ['A','S','D','F','G','H','J','K','L'],
+  ['ENTER','Z','X','C','V','B','N','M','⌫']
+];
+
+function renderKeyboard() {
+  const kb = document.getElementById('keyboard');
+  kb.innerHTML = '';
+  KB_ROWS.forEach(row => {
+    const rowEl = document.createElement('div');
+    rowEl.className = 'kb-row';
+    row.forEach(key => {
+      const btn = document.createElement('button');
+      btn.className = 'key' + (key.length > 1 ? ' wide' : '');
+      btn.textContent = key;
+      btn.id = `key-${key}`;
+      btn.onclick = () => handleKey(key);
+      rowEl.appendChild(btn);
+    });
+    kb.appendChild(rowEl);
+  });
+}
+
+function handleKey(key) {
+  if (gameOver) return;
+  if (key === '⌫' || key === 'BACKSPACE') {
+    if (currentCol > 0) {
+      currentCol--;
+      board[currentRow][currentCol] = '';
+      const tile = document.getElementById(`tile-${currentRow}-${currentCol}`);
+      tile.textContent = '';
+      tile.classList.remove('filled', 'active');
+    }
+    markActiveCell();
+    return;
+  }
+  if (key === 'ENTER') {
+    submitGuess();
+    return;
+  }
+  if (/^[A-Z]$/.test(key) && currentCol < targetWord.length) {
+    board[currentRow][currentCol] = key;
+    const tile = document.getElementById(`tile-${currentRow}-${currentCol}`);
+    tile.textContent = key;
+    tile.classList.add('filled');
+    tile.classList.remove('active');
+    currentCol++;
+    markActiveCell();
+  }
+}
+
+function submitGuess() {
+  if (currentCol < targetWord.length) {
+    // shake
+    const row = document.getElementById(`row-${currentRow}`);
+    row.querySelectorAll('.tile').forEach(t => {
+      t.classList.add('shake');
+      t.addEventListener('animationend', () => t.classList.remove('shake'), {once:true});
+    });
+    setMessage('Not enough letters!');
+    return;
+  }
+
+  const guess = board[currentRow].join('');
+  const result = evaluateGuess(guess);
+
+  // Flip tiles with delay
+  for (let c = 0; c < targetWord.length; c++) {
+    const tile = document.getElementById(`tile-${currentRow}-${c}`);
+    setTimeout(() => {
+      tile.classList.remove('active', 'filled');
+      tile.classList.add(result[c]);
+      tile.style.animationDelay = '0s';
+    }, c * 120);
+  }
+
+  // Update keyboard after all flips
+  setTimeout(() => {
+    updateKeyboard(guess, result);
+
+    if (result.every(r => r === 'correct')) {
+      setMessage('🌍 Outstanding! You got it!');
+      gameOver = true;
+      document.getElementById('new-game-btn').style.display = 'inline-block';
+      return;
+    }
+
+    currentRow++;
+    currentCol = 0;
+
+    if (currentRow >= 6) {
+      setMessage(`The word was: ${targetWord}`);
+      gameOver = true;
+      document.getElementById('new-game-btn').style.display = 'inline-block';
+      return;
+    }
+
+    markActiveCell();
+    setMessage(`Guess ${currentRow + 1} / 6`);
+  }, targetWord.length * 120 + 300);
+}
+
+function evaluateGuess(guess) {
+  const result = Array(targetWord.length).fill('absent');
+  const targetArr = targetWord.split('');
+  const guessArr = guess.split('');
+  const targetCounts = {};
+
+  // First pass: correct
+  for (let i = 0; i < targetWord.length; i++) {
+    if (guessArr[i] === targetArr[i]) {
+      result[i] = 'correct';
+      targetCounts[targetArr[i]] = (targetCounts[targetArr[i]] || 0) - 1;
+    } else {
+      targetCounts[targetArr[i]] = (targetCounts[targetArr[i]] || 0) + 1;
+    }
+  }
+
+  // Second pass: present
+  for (let i = 0; i < targetWord.length; i++) {
+    if (result[i] === 'correct') continue;
+    if (targetCounts[guessArr[i]] > 0) {
+      result[i] = 'present';
+      targetCounts[guessArr[i]]--;
+    }
+  }
+
+  return result;
+}
+
+function updateKeyboard(guess, result) {
+  const priority = { correct: 3, present: 2, absent: 1 };
+  for (let i = 0; i < guess.length; i++) {
+    const letter = guess[i];
+    const btn = document.getElementById(`key-${letter}`);
+    if (!btn) continue;
+    const current = keyStates[letter] || 'none';
+    if ((priority[result[i]] || 0) > (priority[current] || 0)) {
+      keyStates[letter] = result[i];
+      btn.className = 'key' + (btn.classList.contains('wide') ? ' wide' : '') + ' ' + result[i];
+    }
+  }
+}
+
+function setMessage(msg) {
+  document.getElementById('message').textContent = msg;
+}
+
+// Keyboard input
+document.addEventListener('keydown', e => {
+  if (e.ctrlKey || e.altKey || e.metaKey) return;
+  const key = e.key.toUpperCase();
+  if (key === 'BACKSPACE') handleKey('⌫');
+  else if (key === 'ENTER') handleKey('ENTER');
+  else if (/^[A-Z]$/.test(key)) handleKey(key);
+});
+
+initGame();
+</script>
+</body>
+</html>
